@@ -72,15 +72,11 @@ resource "aws_iam_role" "execution" {
   }
 }
 
-# Attach standard ECS execution policy (ECR + CloudWatch)
 resource "aws_iam_role_policy_attachment" "execution" {
   role       = aws_iam_role.execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# CRITICAL: Policy for reading ALL secrets from this service's vault
-# Service can access its own vault only (not other services' vaults)
-# You can add ANY environment variables to the vault later - no code changes needed!
 resource "aws_iam_role_policy" "secrets_access" {
   name = "${var.service_name}-secrets-access"
   role = aws_iam_role.execution.id
@@ -100,7 +96,6 @@ resource "aws_iam_role_policy" "secrets_access" {
   })
 }
 
-# CloudWatch log group
 resource "aws_cloudwatch_log_group" "service" {
   name              = "/ecs/${var.service_name}"
   retention_in_days = 14
@@ -110,7 +105,6 @@ resource "aws_cloudwatch_log_group" "service" {
   }
 }
 
-# ECS Task Definition with Secrets Manager integration
 resource "aws_ecs_task_definition" "service" {
   family                   = var.service_name
   network_mode             = "awsvpc"
@@ -128,9 +122,7 @@ resource "aws_ecs_task_definition" "service" {
       protocol      = "tcp"
     }]
     
-    # SECRETS: Pull ALL key-value pairs from this service's vault
-    # Format: Pull entire secret as individual environment variables
-    # You can add ANY keys to the vault later - they'll automatically appear as env vars!
+    
     secrets = [
       {
         name      = "SECRETS_VAULT"
@@ -138,11 +130,7 @@ resource "aws_ecs_task_definition" "service" {
       }
     ]
     
-    # You can also pull specific keys if needed:
-    # secrets = [
-    #   { name: "PORT", valueFrom: "${service_vault_arn}:PORT::" }
-    #   { name: "DB_PASSWORD", valueFrom: "${service_vault_arn}:DB_PASSWORD::" }
-    # ]
+    
     
     logConfiguration = {
       logDriver = "awslogs"
@@ -161,7 +149,7 @@ resource "aws_ecs_task_definition" "service" {
   }
 }
 
-# ALB Target Group with health checks
+
 resource "aws_lb_target_group" "service" {
   name        = "${var.service_name}-tg"
   port        = var.container_port
@@ -186,7 +174,7 @@ resource "aws_lb_target_group" "service" {
   }
 }
 
-# ALB Listener Rule (path-based routing)
+
 resource "aws_lb_listener_rule" "service" {
   listener_arn = var.alb_listener_arn
   priority     = var.listener_priority
@@ -207,7 +195,7 @@ resource "aws_lb_listener_rule" "service" {
   }
 }
 
-# ECS Service with zero-downtime deployment
+
 resource "aws_ecs_service" "main" {
   name            = var.service_name
   cluster         = var.cluster_id
@@ -232,7 +220,7 @@ resource "aws_ecs_service" "main" {
     container_port   = var.container_port
   }
   
-  # Zero-downtime deployment settings
+  
   deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
   
@@ -252,7 +240,7 @@ resource "aws_ecs_service" "main" {
   }
 }
 
-# Auto-scaling target
+
 resource "aws_appautoscaling_target" "service" {
   max_capacity       = 20
   min_capacity       = var.desired_count
@@ -263,7 +251,7 @@ resource "aws_appautoscaling_target" "service" {
   depends_on = [aws_ecs_service.main]
 }
 
-# CPU-based auto-scaling
+
 resource "aws_appautoscaling_policy" "cpu" {
   name               = "${var.service_name}-cpu-scaling"
   policy_type        = "TargetTrackingScaling"
@@ -281,7 +269,7 @@ resource "aws_appautoscaling_policy" "cpu" {
   }
 }
 
-# Memory-based auto-scaling
+
 resource "aws_appautoscaling_policy" "memory" {
   name               = "${var.service_name}-memory-scaling"
   policy_type        = "TargetTrackingScaling"
@@ -299,7 +287,7 @@ resource "aws_appautoscaling_policy" "memory" {
   }
 }
 
-# ALB request-based auto-scaling
+
 resource "aws_appautoscaling_policy" "alb_requests" {
   name               = "${var.service_name}-alb-requests-scaling"
   policy_type        = "TargetTrackingScaling"
@@ -317,3 +305,4 @@ resource "aws_appautoscaling_policy" "alb_requests" {
     scale_out_cooldown = 60
   }
 }
+
