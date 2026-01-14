@@ -1,0 +1,26 @@
+Why I didn’t go 100% with Spot instances: I have seen this in several clients (and at my current job)
+Spot instances can disappear when load spikes. That causes user-facing problems when instances get reclaimed, so as a safe approach I keep at least one On-Demand instance running
+That way if a region has issues or Spot capacity drops, the service still stays up
+I could also be have used schedule sacaling with current vertical Scaling but not mentioned so didn't used 
+
+I used one ALB for all services. Creating multiple ALBs adds cost and extra management overhead. I have done both ways with customers and using one ALB works fine and is easier to handle for this setup.
+
+I Used Secrets Manager instead of SSM (assessment specified SSM)
+
+Reasoning:
+-Better secret lifecycle (automatic rotation, versioning)
+-Native ECS integration via task execution role
+-Per-service isolation (each service has its own vault)
+-Built-in encryption and audit logging
+
+Slightly higher cost (~$0.40/secret/month) but more security. which is why i used and i have experience with working on 
+
+I have created Architecture diagram in draw.io and added in repo for better understanding the flow
+
+There were few more things and many different approches that i could have used but currently as of timelimit i am doing accoring to what i could do fast and make assessment prod ready ASAP
+
+There was also one approch of creating workflow for deploying new service automaticly using github action (current not added but i have created same in current and previous org) and it's very faster and non error way to make so
+
+Currently not configure rout53 health check monitors or any SNS topic to alert in thirdparty tool because third-party tooling not set up
+
+And lastly for doc creation and few errors that i encounterd i used OpenAI to make it clean apart from that i have created similar Architecture in terraform with ECS and fargate so i know things how it work so i made that by myself accoring to what i have faced issue and best practice when i crated in current and past org
